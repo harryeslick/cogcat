@@ -6,12 +6,25 @@ Supports any [rasterio-compatible format](https://gdal.org/drivers/raster/index.
 
 Inspired by [Simon Willison](https://simonwillison.net/2025/Sep/2/rich-pixels/)
 
+## e.g.
+
+Preview a remote Cloud-Optimised GeoTIFF (TERN soil CEC data):
+
+```bash
+cogcat https://esoil.io/TERNLandscapes/Public/Products/TERN/SLGA/CEC/CEC_000_005_95_N_P_AU_TRN_N_20220826.tif
+```
+![Terminal output from `cogcat` using COG from URL](image-1.png)
+
+
+
+
+
 ## Install
 
 Run directly without installing:
 
 ```bash
-uvx cogcat <source>
+uvx git+https://github.com/harryeslick/cogcat.git
 ```
 
 Or install from GitHub:
@@ -62,14 +75,6 @@ Preview a local GeoTIFF:
 cogcat image.tif
 ```
 
-Preview a remote Cloud-Optimised GeoTIFF (TERN soil CEC data):
-
-```bash
-cogcat https://esoil.io/TERNLandscapes/Public/Products/TERN/SLGA/CEC/CEC_000_005_95_N_P_AU_TRN_N_20220826.tif
-```
-![Terminal output from `cogcat` using COG from URL](image-1.png)
-
-
 Single-band DEM with terrain colormap and histogram:
 
 ```bash
@@ -80,12 +85,14 @@ False-color composite (NIR, Red, Green):
 
 ```bash
 cogcat sentinel.tif -b 4,3,2
+
+# accepts python style negative indexes eg `-b -1` to show the last band. 
 ```
 
 Use a specific overview level for a quick look at a large COG:
 
 ```bash
-cogcat large_cog.tif --overview 8
+cogcat large_cog.tif --overview 128
 ```
 
 Image only, no metadata panel:
@@ -103,7 +110,7 @@ cogcat large.tif -w 1000,2000,500,500
 Run without installing via `uvx`:
 
 ```bash
-uvx cogcat https://esoil.io/TERNLandscapes/Public/Products/TERN/SLGA/CEC/CEC_000_005_95_N_P_AU_TRN_N_20220826.tif -c terrain
+uvx git+https://github.com/harryeslick/cogcat.git https://esoil.io/TERNLandscapes/Public/Products/TERN/SLGA/CEC/CEC_000_005_95_N_P_AU_TRN_N_20220826.tif -c terrain
 ```
 
 ## How It Works
