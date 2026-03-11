@@ -389,11 +389,10 @@ def show_image(console: Console, image: Image.Image, metadata: dict[str, Any] | 
     if src and rnd:
         src_w, src_h = src
         rnd_w, rnd_h = rnd
-        if src_w != rnd_w or src_h != rnd_h:
-            ratio = max(src_w / max(rnd_w, 1), src_h / max(rnd_h, 1))
-            scale_line = Text()
-            scale_line.append(f"  {src_w}×{src_h}", style="dim cyan")
-            scale_line.append(" → ", style="dim")
-            scale_line.append(f"{rnd_w}×{rnd_h}", style="dim green")
-            scale_line.append(f"  ({ratio:.0f}:1)", style="dim")
-            console.print(scale_line)
+        ratio = max(src_w / max(rnd_w, 1), src_h / max(rnd_h, 1))
+        scale_line = Text()
+        scale_line.append(f"  {src_w}×{src_h}", style="dim cyan")
+        scale_line.append(" → ", style="dim")
+        scale_line.append(f"{rnd_w}×{rnd_h}", style="dim green")
+        scale_line.append(f"  ({ratio:.0f}:1)", style="dim")
+        console.print(scale_line)
