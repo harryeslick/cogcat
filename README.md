@@ -113,6 +113,20 @@ Run without installing via `uvx`:
 uvx git+https://github.com/harryeslick/cogcat.git https://esoil.io/TERNLandscapes/Public/Products/TERN/SLGA/CEC/CEC_000_005_95_N_P_AU_TRN_N_20220826.tif -c terrain
 ```
 
+## Github Actions
+
+Use within github actions to quickly verify any tiffs in your workflow look as expected. 
+
+GitHub Actions runners have no TTY resulting in: no ANSI color | terminal width not detected.
+
+Solution: Environment variables in the workflow
+
+```yaml
+    env:
+      FORCE_COLOR: "1"
+      COLUMNS: "120"
+```
+
 ## How It Works
 
 1. Opens the raster and reads metadata (CRS, bounds, resolution, bands) without loading pixels.

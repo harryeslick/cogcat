@@ -17,7 +17,7 @@ def _terminal_pixel_size(margin_rows: int = 2) -> tuple[int, int]:
     Half-block characters encode 2 vertical pixels per character row.
     Reserves 2 columns and 2 rows for the image border.
     """
-    console = Console()
+    console = Console(force_terminal=True)
     cols = console.size.width - 2   # border left + right
     rows = console.size.height - margin_rows - 2  # border top + bottom
     return max(cols, 1), max(rows * 2, 2)

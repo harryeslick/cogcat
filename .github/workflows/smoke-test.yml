@@ -10,6 +10,7 @@ jobs:
     env:
       FORCE_COLOR: "1"
       COLUMNS: "120"
+      LINES: "50"
     steps:
       - uses: actions/checkout@v4
 
