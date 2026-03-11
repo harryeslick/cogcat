@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:tools.simonwillison.net)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:rasterio.readthedocs.io)",
+      "WebFetch(domain:rich.readthedocs.io)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(python -c \"\nimport rasterio, numpy as np\nfrom rasterio.transform import from_bounds\ndata = np.random.randint\\(0, 255, \\(1, 500, 800\\), dtype=np.uint8\\)\nwith rasterio.open\\('test_large.tif', 'w', driver='GTiff', height=500, width=800, count=1, dtype='uint8',\n                    crs='EPSG:4326', transform=from_bounds\\(115, -33, 116, -32, 800, 500\\)\\) as ds:\n    ds.write\\(data\\)\n\" && uv run geocat test_large.tif --no-meta 2>&1 | tail -15 && rm test_large.tif)",
+      "Bash(python -c \"\nimport rasterio, numpy as np\nfrom rasterio.transform import from_bounds\ndata = np.random.randint\\(0, 255, \\(1, 500, 800\\), dtype=np.uint8\\)\nwith rasterio.open\\('test_large.tif', 'w', driver='GTiff', height=500, width=800, count=1, dtype='uint8',\n                    crs='EPSG:4326', transform=from_bounds\\(115, -33, 116, -32, 800, 500\\)\\) as ds:\n    ds.write\\(data\\)\n\" && uv run geocat test_large.tif 2>&1 | head -20 && rm test_large.tif)"
+    ]
+  }
+}
