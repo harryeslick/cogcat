@@ -15,11 +15,20 @@ def _terminal_pixel_size(margin_rows: int = 2) -> tuple[int, int]:
     """Return (width, height) in pixels based on terminal size.
 
     Half-block characters encode 2 vertical pixels per character row.
+    Reserves 2 columns and 2 rows for the image border.
     """
     console = Console()
-    cols = console.size.width
-    rows = console.size.height - margin_rows
-    return cols, max(rows * 2, 2)
+    cols = console.size.width - 2   # border left + right
+    rows = console.size.height - margin_rows - 2  # border top + bottom
+    return max(cols, 1), max(rows * 2, 2)
+
+
+def _fit_dimensions(src_w: int, src_h: int, max_w: int, max_h: int) -> tuple[int, int]:
+    """Compute output dimensions that fit within max bounds preserving aspect ratio."""
+    if src_w <= 0 or src_h <= 0:
+        return max_w, max_h
+    scale = min(max_w / src_w, max_h / src_h)
+    return max(1, round(src_w * scale)), max(1, round(src_h * scale))
 
 
 def read_raster(
@@ -58,6 +67,20 @@ def read_raster(
                         resolved.append(b)
                 bands = resolved
 
+            # Resolve auto-sized window (width/height == 0 means fit to terminal)
+            if window is not None and int(window.width) == 0 and int(window.height) == 0:
+                col_off = int(window.col_off)
+                row_off = int(window.row_off)
+                # Resolve negative offsets first
+                if col_off < 0:
+                    col_off = ds.width + col_off
+                if row_off < 0:
+                    row_off = ds.height + row_off
+                # Compute width/height from terminal pixel budget and remaining raster extent
+                auto_w = min(target_w, ds.width - col_off)
+                auto_h = min(target_h, ds.height - row_off)
+                window = Window(col_off, row_off, max(1, auto_w), max(1, auto_h))
+
             # Resolve negative window offsets (count from right/bottom edge)
             if window is not None:
                 col_off = int(window.col_off)
@@ -82,8 +105,9 @@ def read_raster(
 
             if window is not None:
                 # Explicit window
+                fit_w, fit_h = _fit_dimensions(int(window.width), int(window.height), target_w, target_h)
                 data = ds.read(
-                    read_bands, window=window, out_shape=(len(read_bands), target_h, target_w)
+                    read_bands, window=window, out_shape=(len(read_bands), fit_h, fit_w)
                 )
                 x_off = int(window.col_off)
                 y_off = int(window.row_off)
@@ -101,9 +125,8 @@ def read_raster(
                     meta["crop_type"] = "window"
             elif full or (ds.width <= target_w and ds.height <= target_h):
                 # Read everything, downsample to terminal
-                out_h = min(ds.height, target_h)
-                out_w = min(ds.width, target_w)
-                data = ds.read(read_bands, out_shape=(len(read_bands), out_h, out_w))
+                fit_w, fit_h = _fit_dimensions(ds.width, ds.height, target_w, target_h)
+                data = ds.read(read_bands, out_shape=(len(read_bands), fit_h, fit_w))
             else:
                 # Smart read: use overviews or center window
                 overviews = ds.overviews(read_bands[0])
@@ -119,14 +142,16 @@ def read_raster(
                         factor = overview_level
                         ovr_h = max(1, ds.height // factor)
                         ovr_w = max(1, ds.width // factor)
+                        fit_w, fit_h = _fit_dimensions(ovr_w, ovr_h, target_w, target_h)
                         data = ds.read(
-                            read_bands, out_shape=(len(read_bands), ovr_h, ovr_w)
+                            read_bands, out_shape=(len(read_bands), fit_h, fit_w)
                         )
                         meta["overview_level"] = overview_level
                     else:
                         # rasterio picks the right overview when out_shape is set
+                        fit_w, fit_h = _fit_dimensions(ds.width, ds.height, target_w, target_h)
                         data = ds.read(
-                            read_bands, out_shape=(len(read_bands), target_h, target_w)
+                            read_bands, out_shape=(len(read_bands), fit_h, fit_w)
                         )
                         # Determine which overview was actually used
                         best = min(overviews, key=lambda o: abs(ds.height // o - target_h))
@@ -145,8 +170,9 @@ def read_raster(
                     read_h = min(read_h, ds.height - y_off)
 
                     win = Window(x_off, y_off, read_w, read_h)
+                    fit_w, fit_h = _fit_dimensions(read_w, read_h, target_w, target_h)
                     data = ds.read(
-                        read_bands, window=win, out_shape=(len(read_bands), target_h, target_w)
+                        read_bands, window=win, out_shape=(len(read_bands), fit_h, fit_w)
                     )
                     cropped = True
                     crop_info = {
@@ -161,6 +187,18 @@ def read_raster(
             meta["crop_info"] = crop_info
             meta["bands_read"] = read_bands
             meta["nodata"] = ds.nodata
+
+            # Source vs rendered pixel dimensions for downscale info
+            src_h, src_w = data.shape[1], data.shape[2]
+            if window is not None:
+                meta["source_pixels"] = (int(window.width), int(window.height))
+            elif cropped:
+                ci_w = ds.width - crop_info["left"] - crop_info["right"]
+                ci_h = ds.height - crop_info["top"] - crop_info["bottom"]
+                meta["source_pixels"] = (ci_w, ci_h)
+            else:
+                meta["source_pixels"] = (ds.width, ds.height)
+            meta["render_pixels"] = (src_w, src_h)
 
             return data, meta
 

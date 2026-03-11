@@ -28,8 +28,11 @@ def _parse_window(value: str | None) -> Window | None:
     if value is None:
         return None
     parts = [int(x.strip()) for x in value.split(",")]
+    if len(parts) == 2:
+        # xoff,yoff only — width,height will be determined by terminal size in reader
+        return Window(parts[0], parts[1], 0, 0)
     if len(parts) != 4:
-        raise typer.BadParameter("Window must be xoff,yoff,width,height")
+        raise typer.BadParameter("Window must be xoff,yoff or xoff,yoff,width,height")
     return Window(parts[0], parts[1], parts[2], parts[3])
 
 
@@ -40,7 +43,7 @@ def main(
     colormap: str = typer.Option("viridis", "--colormap", "-c", help="Colormap for single-band display"),
     histogram: bool = typer.Option(False, "--histogram", "-H", help="Show pixel value histogram"),
     full: bool = typer.Option(False, "--full", help="Load entire raster (may be slow for large files)"),
-    window: Optional[str] = typer.Option(None, "--window", "-w", help="Custom window as xoff,yoff,width,height. Negative offsets count from right/bottom edge"),
+    window: Optional[str] = typer.Option(None, "--window", "-w", help="Custom window as xoff,yoff[,width,height]. Omit width,height to auto-size to terminal. Negative offsets count from right/bottom edge"),
     no_meta: bool = typer.Option(False, "--no-meta", help="Hide metadata panel"),
     no_inset: bool = typer.Option(False, "--no-inset", help="Hide crop extent inset overlay"),
     timeout: int = typer.Option(10, "--timeout", help="URL fetch timeout in seconds"),
@@ -80,7 +83,7 @@ def main(
         show_metadata(console, metadata, inset=not no_inset)
 
     image = render_image(array, metadata, colormap=colormap)
-    show_image(console, image)
+    show_image(console, image, metadata)
 
     if metadata.get("cropped"):
         show_crop_warning(console, metadata)
