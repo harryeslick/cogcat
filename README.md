@@ -33,10 +33,10 @@ Or install from GitHub:
 uv pip install git+https://github.com/hfsi/cogcat.git
 ```
 
-With matplotlib colormaps:
+With matplotlib colourmaps:
 
 ```bash
-uv pip install "cogcat[colormaps] @ git+https://github.com/hfsi/cogcat.git"
+uv pip install "cogcat[colourmaps] @ git+https://github.com/hfsi/cogcat.git"
 ```
 
 ## Usage
@@ -56,7 +56,7 @@ cogcat <source> [OPTIONS]
 | Option | Short | Default | Description |
 |---|---|---|---|
 | `--bands` | `-b` | auto | Comma-separated band numbers (e.g. `4,3,2`). Negative indexes count from last band (`-1` = last). |
-| `--colormap` | `-c` | `viridis` | Colormap for single-band display. Built-in: `viridis`, `terrain`, `grayscale`. All matplotlib colormaps available with `[colormaps]` extra. |
+| `--colourmap` | `-c` | `viridis` | colourmap for single-band display. Built-in: `viridis`, `terrain`, `grayscale`. All matplotlib colourmaps available with `[colourmaps]` extra. |
 | `--histogram` | `-H` | off | Show a pixel value histogram below the image. |
 | `--full` | | off | Load the entire raster instead of a terminal-sized subset. May be slow for large files. |
 | `--window` | `-w` | none | Custom read window as `xoff,yoff,width,height` in pixel coordinates. Negative offsets count from right/bottom edge. |
@@ -75,13 +75,13 @@ Preview a local GeoTIFF:
 cogcat image.tif
 ```
 
-Single-band DEM with terrain colormap and histogram:
+Single-band DEM with terrain colourmap and histogram:
 
 ```bash
 cogcat dem.tif -c terrain --histogram
 ```
 
-False-color composite (NIR, Red, Green):
+False-colour composite (NIR, Red, Green):
 
 ```bash
 cogcat sentinel.tif -b 4,3,2
@@ -113,6 +113,8 @@ Run without installing via `uvx`:
 uvx git+https://github.com/harryeslick/cogcat.git https://esoil.io/TERNLandscapes/Public/Products/TERN/SLGA/CEC/CEC_000_005_95_N_P_AU_TRN_N_20220826.tif -c terrain
 ```
 
+Example with read-window and colourmap
+ 
 ![example reading from URL with colourmap and --window](image.png)
 
 
@@ -120,13 +122,13 @@ uvx git+https://github.com/harryeslick/cogcat.git https://esoil.io/TERNLandscape
 
 Use within github actions to quickly verify any tiffs in your workflow look as expected. 
 
-GitHub Actions runners have no TTY resulting in: no ANSI color | terminal width not detected.
+GitHub Actions runners have no TTY resulting in: no ANSI colour | terminal width not detected.
 
 Solution: Environment variables in the workflow
 
 ```yaml
     env:
-      FORCE_COLOR: "1"
+      FORCE_colour: "1"
       COLUMNS: "120"
 ```
 
@@ -137,5 +139,5 @@ Solution: Environment variables in the workflow
 3. Selects the best overview level or reads a center crop to avoid loading unnecessary data.
 4. Downsamples to terminal size using rasterio's `out_shape`.
 5. For multi-band: applies 2–98% percentile stretch per band for good contrast.
-6. For single-band: applies the selected colormap.
+6. For single-band: applies the selected colourmap.
 7. Renders using `rich-pixels` half-block characters.
