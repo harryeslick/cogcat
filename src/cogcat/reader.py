@@ -104,17 +104,18 @@ def read_raster(
             crop_info = {"left": 0, "right": 0, "top": 0, "bottom": 0}
 
             if window is not None:
-                # Explicit window
-                fit_w, fit_h = _fit_dimensions(int(window.width), int(window.height), target_w, target_h)
-                data = ds.read(
-                    read_bands, window=window, out_shape=(len(read_bands), fit_h, fit_w)
-                )
+                # Explicit window — clamp to actual raster bounds for correct aspect ratio
                 x_off = int(window.col_off)
                 y_off = int(window.row_off)
-                w_w = int(window.width)
-                w_h = int(window.height)
-                # Only mark as cropped if the window is a subset of the full raster
-                if w_w < ds.width or w_h < ds.height:
+                w_w = min(int(window.width), ds.width - x_off) if int(window.width) > 0 else ds.width - x_off
+                w_h = min(int(window.height), ds.height - y_off) if int(window.height) > 0 else ds.height - y_off
+                clamped_window = Window(x_off, y_off, w_w, w_h)
+                fit_w, fit_h = _fit_dimensions(w_w, w_h, target_w, target_h)
+                data = ds.read(
+                    read_bands, window=clamped_window, out_shape=(len(read_bands), fit_h, fit_w)
+                )
+                # Mark as cropped if the window doesn't cover the full raster from origin
+                if x_off > 0 or y_off > 0 or x_off + w_w < ds.width or y_off + w_h < ds.height:
                     cropped = True
                     crop_info = {
                         "left": x_off,
@@ -191,7 +192,7 @@ def read_raster(
             # Source vs rendered pixel dimensions for downscale info
             src_h, src_w = data.shape[1], data.shape[2]
             if window is not None:
-                meta["source_pixels"] = (int(window.width), int(window.height))
+                meta["source_pixels"] = (w_w, w_h)
             elif cropped:
                 ci_w = ds.width - crop_info["left"] - crop_info["right"]
                 ci_h = ds.height - crop_info["top"] - crop_info["bottom"]

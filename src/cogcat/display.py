@@ -25,11 +25,11 @@ def _fmt_px(n: int) -> str:
     return str(n)
 
 
-def _build_inset(metadata: dict[str, Any], max_width: int = 26, max_height: int = 12) -> Text:
-    """Build a box-drawing inset showing crop extent within the full raster.
+def _build_inset(metadata: dict[str, Any], max_width: int = 22, max_height: int = 8) -> Text:
+    """Build a half-block pixel minimap showing crop extent within the full raster.
 
-    Outer box = full raster extent, inner box = rendered crop area.
-    Pixel skip counts shown along edges where cropping occurred.
+    Full raster = dim dots, crop region = bright yellow blocks.
+    Works correctly even for tiny crops (1% of raster).
     """
     crop_info = metadata.get("crop_info", {})
     full_w = metadata["width"]
@@ -43,127 +43,56 @@ def _build_inset(metadata: dict[str, Any], max_width: int = 26, max_height: int 
     crop_w = full_w - left - right
     crop_h = full_h - top - bottom
 
-    # Compute outer box dimensions proportional to raster aspect ratio.
-    aspect = full_w / full_h if full_h > 0 else 1.0
-    char_aspect = aspect * 2.0  # correct for character cell proportions
+    # Pixel grid: half-block gives 2 vertical pixels per char row
+    # Correct for character cell proportions (chars are ~2x taller than wide)
+    aspect = full_w / full_h if full_h else 1.0
+    char_aspect = aspect * 2.0  # chars are roughly 2:1 height:width
 
     if char_aspect >= 1.0:
-        width = max_width
-        height = max(5, int(round((max_width - 2) / char_aspect)) + 2)
-        height = min(height, max_height)
+        pw = max_width
+        ph = max(2, int(round(max_width / char_aspect / 2)) * 2)
+        ph = min(ph, max_height * 2)
     else:
-        height = max_height
-        width = max(7, int(round((max_height - 2) * char_aspect)) + 2)
-        width = min(width, max_width)
+        ph = max_height * 2
+        pw = max(2, int(round(ph * char_aspect / 2)) * 2)
+        pw = min(pw, max_width)
 
-    # Inner box position in character coordinates (inside the outer box)
-    iw = width - 2
-    ih = height - 2
+    # Crop region in pixel coordinates
+    x0 = int(left / full_w * pw)
+    y0 = int(top / full_h * ph)
+    x1 = max(x0 + 1, int((left + crop_w) / full_w * pw))
+    y1 = max(y0 + 1, int((top + crop_h) / full_h * ph))
+    x1 = min(x1, pw)
+    y1 = min(y1, ph)
 
-    ix0 = int(left / full_w * iw)
-    iy0 = int(top / full_h * ih)
-    ix1 = int((left + crop_w) / full_w * iw)
-    iy1 = int((top + crop_h) / full_h * ih)
-    ix1 = max(ix1, ix0 + 2)
-    iy1 = max(iy1, iy0 + 2)
-    ix1 = min(ix1, iw)
-    iy1 = min(iy1, ih)
+    # Boolean pixel grid
+    pixels = [[False] * pw for _ in range(ph)]
+    for r in range(y0, y1):
+        for c in range(x0, x1):
+            pixels[r][c] = True
 
-    # Dimension label to show inside the inner box
-    dim_label = f"{_fmt_px(crop_w)}×{_fmt_px(crop_h)}"
-
-    inner_mid_x = (ix0 + ix1) // 2
-    inner_mid_y = (iy0 + iy1) // 2
-
-    # Build character grid with labels overlaid
-    # We'll build the box first, then overlay labels
-    grid: list[list[tuple[str, str]]] = []  # (char, style)
-
-    OUTER = "dim white"
-    INNER = "bold yellow"
-
-    for row in range(height):
-        grid_row: list[tuple[str, str]] = []
-        for col in range(width):
-            if row == 0 and col == 0:
-                ch, st = "╭", OUTER
-            elif row == 0 and col == width - 1:
-                ch, st = "╮", OUTER
-            elif row == height - 1 and col == 0:
-                ch, st = "╰", OUTER
-            elif row == height - 1 and col == width - 1:
-                ch, st = "╯", OUTER
-            elif row == 0 or row == height - 1:
-                ch, st = "─", OUTER
-            elif col == 0 or col == width - 1:
-                ch, st = "│", OUTER
-            else:
-                r = row - 1
-                c = col - 1
-                on_inner_top = r == iy0 and ix0 <= c <= ix1
-                on_inner_bottom = r == iy1 and ix0 <= c <= ix1
-                on_inner_left = c == ix0 and iy0 <= r <= iy1
-                on_inner_right = c == ix1 and iy0 <= r <= iy1
-
-                if r == iy0 and c == ix0:
-                    ch, st = "┌", INNER
-                elif r == iy0 and c == ix1:
-                    ch, st = "┐", INNER
-                elif r == iy1 and c == ix0:
-                    ch, st = "└", INNER
-                elif r == iy1 and c == ix1:
-                    ch, st = "┘", INNER
-                elif on_inner_top or on_inner_bottom:
-                    ch, st = "─", INNER
-                elif on_inner_left or on_inner_right:
-                    ch, st = "│", INNER
-                else:
-                    ch, st = " ", OUTER
-            grid_row.append((ch, st))
-        grid.append(grid_row)
-
-    # Overlay pixel skip labels in the gap regions
-    # Overlay crop dimension label — try inside inner box first, then nearby free space
-    def _place_label(label: str, row: int, col_center: int, style: str = "bold yellow") -> bool:
-        start = col_center - len(label) // 2
-        end = start + len(label) - 1
-        if start < 1 or end >= width - 1 or row < 1 or row >= height - 1:
-            return False
-        for i, ch in enumerate(label):
-            grid[row][start + i] = (ch, style)
-        return True
-
-    placed = False
-    # 1. Inside inner box (needs interior space)
-    if iy1 - iy0 >= 2 and ix1 - ix0 >= len(dim_label) + 1:
-        placed = _place_label(dim_label, 1 + inner_mid_y, 1 + inner_mid_x)
-
-    # 2. Below inner box (gap between inner bottom and outer bottom)
-    if not placed and (ih - 1 - iy1) >= 1:
-        below_row = 1 + iy1 + (ih - iy1) // 2
-        placed = _place_label(dim_label, below_row, 1 + inner_mid_x)
-
-    # 3. Above inner box
-    if not placed and iy0 >= 1:
-        above_row = 1 + iy0 // 2
-        placed = _place_label(dim_label, above_row, 1 + inner_mid_x)
-
-    # 4. Right of inner box
-    if not placed:
-        right_of_box = 1 + ix1 + (iw - ix1) // 2
-        placed = _place_label(dim_label, 1 + inner_mid_y, right_of_box)
-
-    # 5. Fallback: center of outer box
-    if not placed:
-        _place_label(dim_label, height // 2, width // 2)
-
-    # Render grid to Rich Text
+    # Render with half-block chars
+    CROP = "bold yellow"
+    BG = "dim white"
     result = Text()
-    for row_idx, grid_row in enumerate(grid):
-        for ch, style in grid_row:
-            result.append(ch, style=style)
-        if row_idx < height - 1:
+    for row in range(0, ph, 2):
+        for col in range(pw):
+            t = pixels[row][col]
+            b = pixels[row + 1][col] if row + 1 < ph else False
+            if t and b:
+                result.append("█", style=CROP)
+            elif t:
+                result.append("▀", style=CROP)
+            elif b:
+                result.append("▄", style=CROP)
+            else:
+                result.append("░", style=BG)
+        if row + 2 < ph:
             result.append("\n")
+
+    # Dimension label below minimap
+    dim_label = f"{_fmt_px(crop_w)}×{_fmt_px(crop_h)}"
+    result.append(f"\n{dim_label:^{pw}}", style="bold yellow")
 
     return result
 
