@@ -113,6 +113,9 @@ Run without installing via `uvx`:
 uvx git+https://github.com/harryeslick/cogcat.git https://esoil.io/TERNLandscapes/Public/Products/TERN/SLGA/CEC/CEC_000_005_95_N_P_AU_TRN_N_20220826.tif -c terrain
 ```
 
+![example reading from URL with colourmap and --window](image.png)
+
+
 ## Github Actions
 
 Use within github actions to quickly verify any tiffs in your workflow look as expected. 

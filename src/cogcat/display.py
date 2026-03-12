@@ -114,19 +114,18 @@ def show_metadata(
     table.add_row("Dtype", metadata["dtype"])
     table.add_row("Nodata", str(metadata["nodata"]) if metadata["nodata"] is not None else "—")
 
-    if metadata.get("overview_used"):
-        overviews = metadata.get("overviews", [])
-        active = metadata.get("overview_level")
-        if overviews:
-            parts = []
-            for o in overviews:
-                if o == active:
-                    parts.append(f"[bold green]{o}[/bold green]")
-                else:
-                    parts.append(f"[dim]{o}[/dim]")
-            table.add_row("Overviews", " ".join(parts))
-        else:
-            table.add_row("Overview", "Yes (used for fast preview)")
+    overviews = metadata.get("overviews", [])
+    if overviews:
+        active = metadata.get("overview_level") if metadata.get("overview_used") else None
+        parts = []
+        for o in overviews:
+            if o == active:
+                parts.append(f"[bold green]{o}[/bold green]")
+            else:
+                parts.append(f"[dim]{o}[/dim]")
+        table.add_row("Overviews", " ".join(parts))
+    elif metadata.get("overview_used"):
+        table.add_row("Overview", "Yes (used for fast preview)")
 
     cropped = metadata.get("cropped", False)
 

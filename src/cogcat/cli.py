@@ -48,7 +48,6 @@ def main(
     no_inset: bool = typer.Option(False, "--no-inset", help="Hide crop extent inset overlay"),
     timeout: int = typer.Option(10, "--timeout", help="URL fetch timeout in seconds"),
     margin_rows: int = typer.Option(2, "--margin-rows", help="Reserve terminal rows for prompt"),
-    overview: Optional[int] = typer.Option(None, "--overview", help="Render a specific overview level (e.g. 2, 4, 8, 16)"),
 ) -> None:
     """Render a GeoTIFF (or any rasterio-supported raster) in the terminal."""
     from .display import show_crop_warning, show_histogram, show_image, show_metadata
@@ -68,7 +67,6 @@ def main(
             full=full,
             timeout=timeout,
             margin_rows=margin_rows,
-            overview_level=overview,
         )
     except Exception as e:
         console.print(f"[red]Error reading raster:[/red] {e}")

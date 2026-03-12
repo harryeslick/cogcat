@@ -38,7 +38,6 @@ def read_raster(
     full: bool = False,
     timeout: int = 10,
     margin_rows: int = 2,
-    overview_level: int | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Read a raster file, returning pixel data sized to the terminal.
 
@@ -103,6 +102,11 @@ def read_raster(
             cropped = False
             crop_info = {"left": 0, "right": 0, "top": 0, "bottom": 0}
 
+            # Always gather overview info for display, regardless of read strategy
+            overviews = ds.overviews(read_bands[0])
+            if overviews:
+                meta["overviews"] = overviews
+
             if window is not None:
                 # Explicit window — clamp to actual raster bounds for correct aspect ratio
                 x_off = int(window.col_off)
@@ -133,30 +137,14 @@ def read_raster(
                 overviews = ds.overviews(read_bands[0])
                 if overviews and not full:
                     meta["overviews"] = overviews
-                    if overview_level is not None:
-                        # User requested a specific overview level
-                        if overview_level not in overviews:
-                            raise ValueError(
-                                f"Overview level {overview_level} not available. "
-                                f"Choose from: {overviews}"
-                            )
-                        factor = overview_level
-                        ovr_h = max(1, ds.height // factor)
-                        ovr_w = max(1, ds.width // factor)
-                        fit_w, fit_h = _fit_dimensions(ovr_w, ovr_h, target_w, target_h)
-                        data = ds.read(
-                            read_bands, out_shape=(len(read_bands), fit_h, fit_w)
-                        )
-                        meta["overview_level"] = overview_level
-                    else:
-                        # rasterio picks the right overview when out_shape is set
-                        fit_w, fit_h = _fit_dimensions(ds.width, ds.height, target_w, target_h)
-                        data = ds.read(
-                            read_bands, out_shape=(len(read_bands), fit_h, fit_w)
-                        )
-                        # Determine which overview was actually used
-                        best = min(overviews, key=lambda o: abs(ds.height // o - target_h))
-                        meta["overview_level"] = best
+                    # rasterio picks the right overview when out_shape is set
+                    fit_w, fit_h = _fit_dimensions(ds.width, ds.height, target_w, target_h)
+                    data = ds.read(
+                        read_bands, out_shape=(len(read_bands), fit_h, fit_w)
+                    )
+                    # Determine which overview was actually used
+                    best = min(overviews, key=lambda o: abs(ds.height // o - target_h))
+                    meta["overview_level"] = best
                     meta["overview_used"] = True
                 else:
                     # Center window crop
