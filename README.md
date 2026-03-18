@@ -132,6 +132,9 @@ Solution: Environment variables in the workflow
       COLUMNS: "120"
 ```
 
+See [package actions](https://github.com/harryeslick/cogcat/actions/runs/22981812567/job/66723118188) for example
+
+
 ## How It Works
 
 1. Opens the raster and reads metadata (CRS, bounds, resolution, bands) without loading pixels.
